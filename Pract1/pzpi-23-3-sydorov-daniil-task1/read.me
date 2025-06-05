@@ -1,1 +1,61 @@
+#!/bin/bash
 
+if (( $# != 2 )); then
+    echo "потрібно вказати 2 аргументи" >&2
+    exit 1
+fi
+
+HEIGHT=$1
+SNOW_WIDTH=$2
+
+if (( HEIGHT <= 0 || SNOW_WIDTH <= 0 )); then
+    echo "не додані оба аргументи" >&2
+    exit 2
+fi
+
+HEIGHT=$(( HEIGHT / 2 * 2 ))
+MAX_BRANCH_WIDTH=$(( SNOW_WIDTH - 4 ))
+
+if (( HEIGHT < 8 || MAX_BRANCH_WIDTH < 3 )); then
+    echo "висота або ширина недостатня" >&2
+    exit 3
+fi
+
+print_row() {
+    local width=$1
+    local symbol=$2
+    local padding=$(( (SNOW_WIDTH - width) / 2 ))
+    printf "%${padding}s" ""
+    printf "%${width}s\n" | tr " " "$symbol"
+}
+
+build_layer() {
+    local rows=$1
+    local symbol="*"
+    local row=1
+
+    while (( row <= rows )); do
+        local width=$(( 1 + ((MAX_BRANCH_WIDTH - 1) * (row - 1) / (rows - 1)) ))
+        print_row "$width" "$symbol"
+
+        if [ "$symbol" == "*" ]; then
+            symbol="#"
+        else
+            symbol="*"
+        fi
+        ((row++))
+    done
+}
+
+BRANCH_ROWS=$(( (HEIGHT - 4) / 2 + 1 ))
+
+for layer in 1 2; do
+    build_layer "$BRANCH_ROWS"
+done
+for (( i = 0; i < 2; i++ )); do
+    print_row 3 "#"
+done
+for (( i = 0; i < SNOW_WIDTH; i++ )); do
+    printf "*"
+done
+printf "\n"
