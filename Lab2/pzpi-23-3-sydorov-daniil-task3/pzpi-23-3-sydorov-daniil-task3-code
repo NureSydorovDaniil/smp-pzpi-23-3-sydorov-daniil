@@ -122,7 +122,7 @@ while (true) {
             do {
                 echo "Вкажіть ваш вік: ";
                 $clientAge = inputLine();
-            } while (!is_numeric($clientAge) || $clientAge < 7 || $clientAge > 150);
+            } while (!is_numeric($clientAge) || $clientAge < 6 || $clientAge > 100);
 
             echo "Профіль було оновлено: {$clientName}, вік {$clientAge}\n";
             break;
