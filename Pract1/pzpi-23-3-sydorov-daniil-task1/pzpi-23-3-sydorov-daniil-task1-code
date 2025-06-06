@@ -29,7 +29,7 @@ print_row() {
     printf "%${width}s\n" | tr " " "$symbol"
 }
 
-build_layer() {
+print_layer() {
     local rows=$1
     local symbol="*"
     local row=1
@@ -50,7 +50,7 @@ build_layer() {
 BRANCH_ROWS=$(( (HEIGHT - 4) / 2 + 1 ))
 
 for layer in 1 2; do
-    build_layer "$BRANCH_ROWS"
+    print_layer "$BRANCH_ROWS"
 done
 for (( i = 0; i < 2; i++ )); do
     print_row 3 "#"
