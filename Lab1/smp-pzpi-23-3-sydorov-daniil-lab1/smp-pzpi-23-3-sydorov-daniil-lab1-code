@@ -1,1 +1,127 @@
+#!/bin/bash
 
+VERSION="1.2"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+quiet=0
+
+print_help() {
+  echo "Usage: pzpi-23-3-sydorov-daniil-task2 [--help | --version] | [[-q|--quiet] [ACADEMIC_GROUP] timetable.csv]"
+  echo "Converts CIST timetable CSV to Google Calendar format."
+  exit 0
+}
+
+print_version() {
+  echo "pzpi-23-3-sydorov-daniil-task2 version $VERSION"
+  exit 0
+}
+
+convert_encoding() {
+  iconv -f "WINDOWS-1251" -t "UTF-8" "$source_csv" > "$converted_file"
+  sed -i 's/\r/\n/g' "$converted_file"
+}
+
+extract_groups() {
+  awk -F, 'NR>1 {gsub(/^\"|\"$/, "", $1); print $1}' "$INPUT_FILE" | sed -E 's/.*\(([^)]+)\).*/\1/' | cut -d'-' -f2 | sort | uniq > .group_list
+}
+
+select_timetable_file() {
+  local files=( $(ls "$script_dir"/TimeTable_??_??_20??.csv 2>/dev/null) )
+  if [[ ${#files[@]} -eq 0 ]]; then echo "No matching CSV files." >&2; exit 1; fi
+  echo "Select a CSV file:"; select f in "${files[@]}"; do
+    [[ -n "$f" ]] && selected_file="$f" && break || echo "Invalid choice."
+  done
+}
+
+select_group() {
+  echo "Select an academic group:"; select g in $groups; do
+    [[ -n "$g" ]] && selected_group="$g" && break || echo "Invalid choice."
+  done
+}
+
+format_time() {
+  local hour=${1%%:*}; local min=${1##*:};
+  local suffix="AM"; ((hour >= 12)) && suffix="PM"
+  ((hour > 12)) && hour=$((hour - 12)); ((hour == 0)) && hour=12
+  printf "%02d:%s %s" "$hour" "$min" "$suffix"
+}
+
+generate_output_csv() {
+  echo '"Subject","Start Date","Start Time","End Date","End Time","Description"' > "$OUTPUT_FILE"
+  declare -A subject_counter
+
+  awk -F, -v group="$selected_group" 'BEGIN { OFS="," }
+  NR > 1 {
+    for (i=1; i<=NF; i++) gsub(/^\"|\"$/, "", $i)
+    if ($1 ~ group) {
+      subj = $1
+      gsub(/\*/,"", subj)
+      gsub(/\(.+\)/, "", subj)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", subj)
+      count[subj]++
+
+      desc = $NF
+
+      split($2, sd, "."); start_date = sd[2] "/" sd[1] "/" sd[3]
+      split($4, ed, "."); end_date = ed[2] "/" ed[1] "/" ed[3]
+
+      split($3, st, ":"); hour1 = st[1]; min1 = st[2]
+      split($5, et, ":"); hour2 = et[1]; min2 = et[2]
+
+      suffix1 = (hour1 >= 12) ? "PM" : "AM"
+      suffix2 = (hour2 >= 12) ? "PM" : "AM"
+      hour1 = (hour1 % 12 == 0) ? 12 : hour1 % 12
+      hour2 = (hour2 % 12 == 0) ? 12 : hour2 % 12
+
+      start_time = hour1 ":" min1 " " suffix1
+      end_time = hour2 ":" min2 " " suffix2
+
+      printf "\"%s; №%d\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+        subj, count[subj], start_date, start_time, end_date, end_time, desc
+    }
+  }' "$INPUT_FILE" >> "$OUTPUT_FILE"
+
+  [[ $quiet -eq 0 ]] && cat "$OUTPUT_FILE"
+}
+
+main() {
+  case "$1" in
+    --help) print_help;;
+    --version) print_version;;
+    -q|--quiet) quiet=1; shift;;
+  esac
+
+  if [[ -n "$2" ]]; then
+    selected_group="$1"; selected_file="$2"
+  elif [[ -n "$1" && -f "$script_dir/$1" ]]; then
+    selected_file="$script_dir/$1"
+  elif [[ -n "$1" ]]; then
+    selected_group="$1"
+  else
+    select_timetable_file
+  fi
+
+  [[ -z "$selected_file" ]] && select_timetable_file
+  [[ ! -f "$selected_file" ]] && echo "Error: file not found!" >&2 && exit 1
+
+  source_csv="$selected_file"
+  converted_file="/tmp/converted_$(basename "$source_csv")"
+  convert_encoding
+  INPUT_FILE="$converted_file"
+  extract_groups || { echo "No valid groups found" >&2; exit 1; }
+  groups=$(cat .group_list)
+
+  if [[ -z "$selected_group" ]]; then
+    if [[ $(wc -l < .group_list) -eq 1 ]]; then
+      selected_group=$(head -n1 .group_list)
+    else
+      select_group
+    fi
+  fi
+
+  grep -q "$selected_group" .group_list || { echo "Group '$selected_group' not found!" >&2; exit 1; }
+
+  OUTPUT_FILE="$script_dir/Google_$(basename "$selected_file")"
+  generate_output_csv
+}
+
+main "$@"
