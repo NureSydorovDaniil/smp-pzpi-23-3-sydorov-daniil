@@ -24,3 +24,315 @@
 
 
                                    Харків – 2025
+ЗАВДАННЯ
+
+Використовуючи матеріал попередніх лабораторних робіт, потрібно додати такий функціонал: 
+1. Прибрати дублювання шапки і підвалу сайту (якщо воно є). 
+2. Додати сторінку логіна. Обмежити доступ до сайту не залогіненим користувачам. 
+3. Додати сторінку профілю з можливістю завантажити фото
+
+ХІД РОБОТИ
+
+У ході виконання лабораторної роботи було покращення коду та додавання нових ффункцій. Покращення коду та додавання нових елементыв выдбулося на productsbin.php(кошик покупок), add_to_cart.php(додавання до кошика), clear_cart.php(видалення продуктів з кошика), remove_from_cart.php(видалення всіх продуктів з кошика), products.php(продукція), login.php(логін до сайту), logout.php(вихід з сайту) та auth_check.php(перевірка логіну а сайті) profile.php (профіль користувача)
+
+Нові функції:
+remove_from_cart.php код дозволяє користувачу видалити окермий товар з кошика. Він видаляє саме той товар, який захоче користувач, залишивши всі товари що залишились в кошику на своєму місці. Код отримує id товару з POST-запиту, видаляє цей товар з SESSION[«cart»] (5), та оновлює інформацію про товари у кошику для файлу cart.json.
+
+login.php. форма яка була додана для лабораторної роботи, завдяки їй користувач може зайти на свій акаунт в інтернет-магазині. Якщо логін або пароль були введені користувачем невірно, вористувачу буде адресовано повідомлення про невірну авторизацію. У коді задається масив користувача, логін – пароль. Код перевіряє чи вірно були введені логін та пароль. Якщо так, записує логун у сесію та переадресовує на головну сторніку сайту.
+
+logout.php.  надати користувачу можливість вийти зі свого акакнута. Код скидує сесію, знищує її та переадресовує після цього на сторінку входу до інтернет-магазину.
+
+auth_check.php. Для захисту сторінки від доступу незалогінених користувачів, було написано код, який запускає сесію, перевіряє чи існує в сесії ключ користувача, який встановлюється при логіні. Якщо ні, переадресовує користувача на сторінку входу до інтернет магазину.
+
+profile.php. Користувачу додалося нове вікно де він може подивитись інформацію про свій акаунт, надалась можливість змінити фото на сайті, всі фото зберігаються у папці uploads.
+
+
+ВИСНОВКИ
+У ході виконання лабораторної роботи були оновленні та додані нові php функції, було реалізовано додавання фото та зберігання їх у файлах.
+
+Відеозвіт: https://youtu.be/yngRbdNzVeY
+
+ДОДАТОК А
+1) shophome.php
+1 <?php include 'auth_check.php'; ?>
+ 2 <!DOCTYPE html>
+ 3 <html lang="uk">
+ 4 <head>
+ 5     <meta charset="UTF-8">
+ 6     <title>Інтернет-магазин</title>
+ 7     <link rel="stylesheet" href="style.css">
+ 8 </head>
+ 9 <body>
+10 <header>
+11     <nav>
+12         <a href="shophome.php">Головна</a> |
+13         <a href="products.php">Товари</a> |
+14         <a href="productsbin.php">Кошик</a> |
+15         <a href="profile.php">Профіль</a> |
+16         <a href="logout.php">Вийти</a>
+17     </nav>
+18 </header>
+19 <main>
+20     <h1>Вітаємо в інтернет-магазині!</h1>
+21     <p>Оберіть потрібний розділ з меню.</p>
+22 </main>
+23 </body>
+24 </html>
+
+2) products.php
+1 <?php include 'auth_check.php'; ?>
+ 2 <!DOCTYPE html>
+ 3 <html lang="uk">
+ 4 <head>
+ 5     <meta charset="UTF-8">
+ 6     <title>Товари</title>
+ 7     <link rel="stylesheet" href="style.css">
+ 8 </head>
+ 9 <body>
+10 <header>
+11     <nav>
+12         <a href="shophome.php">Головна</a> |
+13         <a href="products.php">Товари</a> |
+14         <a href="productsbin.php">Кошик</a> |
+15         <a href="profile.php">Профіль</a> |
+16         <a href="logout.php">Вийти</a>
+17     </nav>
+18 </header>
+19 <main>
+20     <h1>Список товарів</h1>
+21     <?php
+22     $products = [
+23         1 => ["name" => "Ігровий Ноутбук Acer", "price" => 40000],
+24         2 => ["name" => "Смартфон Samsung", "price" => 22000],
+25         3 => ["name" => "Смарт годинник Apple Watch", "price" => 15000],
+26     ];
+27 
+28     foreach ($products as $id => $product) {
+29         echo "<div>
+30             <h3>{$product['name']}</h3>
+31             <p>Ціна: {$product['price']} грн</p>
+32             <form method='POST' action='add_to_cart.php'>
+33                 <input type='hidden' name='product_id' value='$id'>
+34                 <input type='number' name='quantity' value='1' min='1' required>
+35                 <button type='submit' class='center-button'>Додати до кошика</button>
+36             </form>
+37         </div><hr>";
+38     }
+39     ?>
+40 </main>
+41 </body>
+42 </html>
+
+3) productsbin.php
+1 <?php
+ 2 include 'auth_check.php'; 
+ 3 ?>
+ 4 <!DOCTYPE html>
+ 5 <html lang="uk">
+ 6 <head>
+ 7     <meta charset="UTF-8">
+ 8     <title>Кошик</title>
+ 9     <link rel="stylesheet" href="style.css">
+10 </head>
+11 <body>
+12 <header>
+13     <nav>
+14         <a href="shophome.php">Головна</a> |
+15         <a href="products.php">Товари</a> |
+16         <a href="productsbin.php">Кошик</a> |
+17         <a href="profile.php">Профіль</a> |
+18         <a href="logout.php">Вийти</a>
+19     </nav>
+20 </header>
+21 <main>
+22     <h1>Ваш кошик</h1>
+23     <?php
+24     if (empty($_SESSION["cart"])) {
+25         echo "<p>Кошик порожній.</p>";
+26     } else {
+27         $total = 0;
+28         echo "<ul class='cart-list'>";
+29         foreach ($_SESSION["cart"] as $id => $item) {
+30             $sum = $item["price"] * $item["quantity"];
+31             $total += $sum;
+32             echo "<li>
+33                 {$item['name']} — {$item['quantity']} шт. ({$sum} грн)
+34                 <form method='POST' action='remove_from_cart.php' style='display:inline;'>
+35                     <input type='hidden' name='product_id' value='{$id}'>
+36                     <button type='submit' class='remove-item'>Видалити</button>
+37                 </form>
+38             </li>";
+39         }
+40         echo "</ul>";
+41         echo "<p><strong>Загальна сума: {$total} грн</strong></p>";
+42         echo "<form method='POST' action='clear_cart.php'>
+43                     <button type='submit' class='center-button'>Очистити кошик</button>
+44                   </form>";
+45     }
+46     ?>
+47 </main>
+48 </body>
+49 </html>
+
+4) profile.php
+1 <?php
+ 2 include 'auth_check.php'; 
+ 3 ?>
+ 4 <!DOCTYPE html>
+ 5 <html lang="uk">
+ 6 <head>
+ 7     <meta charset="UTF-8">
+ 8     <title>Профіль</title>
+ 9     <link rel="stylesheet" href="style.css">
+10 </head>
+11 <body>
+12 <header>
+13     <nav>
+14         <a href="shophome.php">Головна</a> |
+15         <a href="products.php">Товари</a> |
+16         <a href="productsbin.php">Кошик</a> |
+17         <a href="profile.php">Профіль</a> |
+18         <a href="logout.php">Вийти</a>
+19     </nav>
+20 </header>
+21 <main>
+22     <h1>Ваш профіль</h1>
+23     <p>Логін: <strong><?php echo htmlspecialchars($_SESSION["user"]); ?></strong></p>
+24 
+25     <h2>Фото профілю</h2>
+26     <?php
+27     $filename = "uploads/" . $_SESSION["user"] . ".jpg";
+28     if (file_exists($filename)) {
+29         echo "<img src='$filename' style='max-width:200px;'><br>";
+30     } else {
+31         echo "<p>Фото ще не завантажено.</p>";
+32     }
+33     ?>
+34     <form method="post" enctype="multipart/form-data">
+35         <input type="file" name="profile_photo" accept="image/*" required>
+36         <button type="submit" class='center-button'>Завантажити</button>
+37     </form>
+38 
+39     <?php
+40     if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["profile_photo"])) {
+41         if (!is_dir("uploads")) mkdir("uploads");
+42         move_uploaded_file($_FILES["profile_photo"]["tmp_name"], $filename);
+43         echo "<p>Фото завантажено!</p><meta http-equiv='refresh' content='1'>";
+44     }
+45     ?>
+46 </main>
+47 </body>
+48 </html>
+
+5) Login.php
+1 <?php
+ 2 session_start();
+ 3 
+ 4 $users = [
+ 5     "admin" => "1234", // логин пароль, не забыть
+ 6 ];
+ 7 
+ 8 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+ 9     $login = $_POST["login"] ?? '';
+10     $password = $_POST["password"] ?? '';
+11 
+12     if (isset($users[$login]) && $users[$login] === $password) {
+13         $_SESSION["user"] = $login;
+14         header("Location: shophome.php");
+15         exit;
+16     } else {
+17         $error = "Невірний логін або пароль!";
+18     }
+19 }
+20 ?>
+21 <!DOCTYPE html>
+22 <html lang="uk">
+23 <head>
+24     <meta charset="UTF-8">
+25     <title>Вхід</title>
+26     <link rel="stylesheet" href="style.css">
+27 </head>
+28 <body>
+29 <main>
+30     <h1>Вхід</h1>
+31     <?php if (!empty($error)) echo "<p style='color:red;'>$error</p>"; ?>
+32     <form method="post">
+33         <input type="text" name="login" placeholder="Логін" required><br><br>
+34         <input type="password" name="password" placeholder="Пароль" required><br><br>
+35         <button type="submit">Увійти</button>
+36     </form>
+37 </main>
+38 </body>
+39 </html>
+
+6) logout.php
+1 <?php
+2 session_start();
+3 session_unset();
+4 session_destroy();
+5 header("Location: login.php");
+6 exit;
+
+7) auth_check.php
+1 <?php
+2 session_start();
+3 if (!isset($_SESSION["user"])) {
+4     header("Location: login.php");
+5     exit;
+6 }
+
+8) add_to_cart.php
+1 <?php
+ 2 session_start();
+ 3 
+ 4 $products = [
+ 5     1 => ["name" => "Ігровий Ноутбук Acer", "price" => 40000],
+ 6     2 => ["name" => "Смартфон Samsung", "price" => 22000],
+ 7     3 => ["name" => "Смарт годинник Apple Watch", "price" => 15000],
+ 8 ];
+ 9 
+10 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+11     $product_id = (int) $_POST["product_id"];
+12     $quantity = (int) $_POST["quantity"];
+13 
+14     if (isset($products[$product_id])) {
+15         $product = $products[$product_id];
+16 
+17         if (!isset($_SESSION["cart"])) $_SESSION["cart"] = [];
+18 
+19         if (isset($_SESSION["cart"][$product_id])) {
+20             $_SESSION["cart"][$product_id]["quantity"] += $quantity;
+21         } else {
+22             $_SESSION["cart"][$product_id] = [
+23                 "id" => $product_id,
+24                 "name" => $product["name"],
+25                 "price" => $product["price"],
+26                 "quantity" => $quantity
+27             ];
+28         }
+29 
+30         file_put_contents("cart.json", json_encode($_SESSION["cart"], JSON_PRETTY_PRINT));
+31     }
+32 }
+33 
+34 header("Location: productsbin.php");
+35 exit;
+
+9) clear_cart.php
+1 <?php
+2 session_start();
+3 unset($_SESSION["cart"]);
+4 unlink("cart.json");
+5 header("Location: productsbin.php");
+6 exit;
+
+10) remove_from_cart.php
+<?php
+session_start();
+if (isset($_POST["product_id"])) {
+    $id = (int) $_POST["product_id"];
+    unset($_SESSION["cart"][$id]);
+    file_put_contents("cart.json", json_encode($_SESSION["cart"], JSON_PRETTY_PRINT));
+}
+header("Location: productsbin.php");
+exit;
