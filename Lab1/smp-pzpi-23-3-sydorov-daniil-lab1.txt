@@ -40,3 +40,276 @@
 Google_TimeTable_??_??_20??.csv
 де ??_??_20?? — дата, що відповідає вхідному файлу.
 
+
+ХІД РОБОТИ
+На початку скрипта задається змінна версії, визначається дерикторія у якій знаходиться скрипт, та змінна завдяки якій буде показуватись результат у консолі
+3 VERSION="1.2"
+4 script_dir="$(cd "$(dirname "$0")" && pwd)"
+5 quiet=0
+
+2 допоміжніфункції, print_help виводить інструкцію по використанню скрипта, а функція print_version виводить версію скрипта.
+
+7 print_help() {
+  8   echo "Usage: pzpi-23-3-sydorov-daniil-task2 [--help | --version] | [[-q|--quiet] [ACADEMIC_GROUP] timetable.csv]"
+  9   echo "Converts CIST timetable CSV to Google Calendar format."
+ 10   exit 0
+ 11 }
+ 12 
+ 13 print_version() {
+ 14   echo "pzpi-23-3-sydorov-daniil-task2 version $VERSION"
+ 15   exit 0
+ 16 }
+
+Після цього йде наступна функція, яка конвертує CSV-файл з Windows-1251 у UTF-8, також замінює символи переносу рядка з Windows формату на Unix
+ 18 convert_encoding() {
+ 19   iconv -f "WINDOWS-1251" -t "UTF-8" "$source_csv" > "$converted_file"
+ 20   sed -i 's/\r/\n/g' "$converted_file"
+ 21 }
+
+функція яка витягує перший стовпчик, назви предметів із групами, та зберігає їх у список унікальних груп.
+ 23 extract_groups() {
+ 24   awk -F, 'NR>1 {gsub(/^\"|\"$/, "", $1); print $1}' "$INPUT_FILE" | sed -E 's/.*\(([^)]+)\).*/\1/' | cut -d'-' -f2 | sort | uniq > .group_list
+ 25 }
+
+функція, яка шукає всі CSV-файли, що відповідають шаблону, та дає вибрати один з них через меню select.
+ 27 select_timetable_file() {
+ 28   local files=( $(ls "$script_dir"/TimeTable_??_??_20??.csv 2>/dev/null) )
+ 29   if [[ ${#files[@]} -eq 0 ]]; then echo "No matching CSV files." >&2; exit 1; fi
+ 30   echo "Select a CSV file:"; select f in "${files[@]}"; do
+ 31     [[ -n "$f" ]] && selected_file="$f" && break || echo "Invalid choice."
+ 32   done
+ 33 }
+
+функція яка виводить список груп та дає користувачу вибрати певну групу.
+ 35 select_group() {
+ 36   echo "Select an academic group:"; select g in $groups; do
+ 37     [[ -n "$g" ]] && selected_group="$g" && break || echo "Invalid choice."
+ 38   done
+ 39 }
+
+йде функція яка перетворює формат часу який потрібен для гугл календаря.
+ 41 format_time() {
+ 42   local hour=${1%%:*}; local min=${1##*:};
+ 43   local suffix="AM"; ((hour >= 12)) && suffix="PM"
+ 44   ((hour > 12)) && hour=$((hour - 12)); ((hour == 0)) && hour=12
+ 45   printf "%02d:%s %s" "$hour" "$min" "$suffix"
+ 46 }
+
+функція, яка є основною частиною обробки. Вона створює заголовок для CSV, де є предмет, день, час та опис. за допомогою awk, фільтрується лише ті записи де група збігається з обраною. Формується дата, час у формат для гугл календаря, очищається назви предметів від зайвих знаків, дужок та пробілів, рахується кількість однакових предметів та додається опис до пари
+ 48 generate_output_csv() {
+ 49   echo '"Subject","Start Date","Start Time","End Date","End Time","Description"' > "$OUTPUT_FILE"
+ 50   declare -A subject_counter
+ 51 
+ 52   awk -F, -v group="$selected_group" 'BEGIN { OFS="," }
+ 53   NR > 1 {
+ 54     for (i=1; i<=NF; i++) gsub(/^\"|\"$/, "", $i)
+ 55     if ($1 ~ group) {
+ 56       subj = $1
+ 57       gsub(/\*/,"", subj)
+ 58       gsub(/\(.+\)/, "", subj)
+ 59       gsub(/^[[:space:]]+|[[:space:]]+$/, "", subj)
+ 60       count[subj]++
+ 61 
+ 62       desc = $NF
+ 63 
+ 64       split($2, sd, "."); start_date = sd[2] "/" sd[1] "/" sd[3]
+ 65       split($4, ed, "."); end_date = ed[2] "/" ed[1] "/" ed[3]
+ 66 
+ 67       split($3, st, ":"); hour1 = st[1]; min1 = st[2]
+ 68       split($5, et, ":"); hour2 = et[1]; min2 = et[2]
+ 69 
+ 70       suffix1 = (hour1 >= 12) ? "PM" : "AM"
+ 71       suffix2 = (hour2 >= 12) ? "PM" : "AM"
+ 72       hour1 = (hour1 % 12 == 0) ? 12 : hour1 % 12
+ 73       hour2 = (hour2 % 12 == 0) ? 12 : hour2 % 12
+ 74 
+ 75       start_time = hour1 ":" min1 " " suffix1
+ 76       end_time = hour2 ":" min2 " " suffix2
+ 77 
+ 78       printf "\"%s; №%d\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+ 79         subj, count[subj], start_date, start_time, end_date, end_time, desc
+ 80     }
+ 81   }' "$INPUT_FILE" >> "$OUTPUT_FILE"
+ 82 
+ 83   [[ $quiet -eq 0 ]] && cat "$OUTPUT_FILE"
+ 84 }
+
+функція main, яка: аналізує аргументи командного рядка, визначає який файл і яка група обрані, викликає функції і після цього зберігає фінальний файл який нам буде потрібен для імпорту у гугл календар
+ 86 main() {
+ 87   case "$1" in
+ 88     --help) print_help;;
+ 89     --version) print_version;;
+ 90     -q|--quiet) quiet=1; shift;;
+ 91   esac
+ 92 
+ 93   if [[ -n "$2" ]]; then
+ 94     selected_group="$1"; selected_file="$2"
+ 95   elif [[ -n "$1" && -f "$script_dir/$1" ]]; then
+ 96     selected_file="$script_dir/$1"
+ 97   elif [[ -n "$1" ]]; then
+ 98     selected_group="$1"
+ 99   else
+100     select_timetable_file
+101   fi
+102 
+103   [[ -z "$selected_file" ]] && select_timetable_file
+104   [[ ! -f "$selected_file" ]] && echo "Error: file not found!" >&2 && exit 1
+105 
+106   source_csv="$selected_file"
+107   converted_file="/tmp/converted_$(basename "$source_csv")"
+108   convert_encoding
+109   INPUT_FILE="$converted_file"
+110   extract_groups || { echo "No valid groups found" >&2; exit 1; }
+111   groups=$(cat .group_list)
+112 
+113   if [[ -z "$selected_group" ]]; then
+114     if [[ $(wc -l < .group_list) -eq 1 ]]; then
+115       selected_group=$(head -n1 .group_list)
+116     else
+117       select_group
+118     fi
+119   fi
+120 
+121   grep -q "$selected_group" .group_list || { echo "Group '$selected_group' not found!" >&2; exit 1; }
+122 
+123   OUTPUT_FILE="$script_dir/Google_$(basename "$selected_file")"
+124   generate_output_csv
+125 }
+126 
+127 main "$@"
+
+ВИСНОВКИ
+У ході роботи було вивчено та застосовано основні команди Bash для обробки файлів і текстових даних. Створений скрипт дозволяє конвертувати розклад із CSV-файлу у формат, придатний для імпорту в Google Календар.
+
+Відеозвіт: https://youtu.be/Oax_MB3-_8w
+
+ДОДАТОК А
+Програмний код
+
+1 #!/bin/bash
+  2 
+  3 VERSION="1.2"
+  4 script_dir="$(cd "$(dirname "$0")" && pwd)"
+  5 quiet=0
+  6 
+  7 print_help() {
+  8   echo "Usage: pzpi-23-3-sydorov-daniil-task2 [--help | --version] | [[-q|--quiet] [ACADEMIC_GROUP] timetable.csv]"
+  9   echo "Converts CIST timetable CSV to Google Calendar format."
+ 10   exit 0
+ 11 }
+ 12 
+ 13 print_version() {
+ 14   echo "pzpi-23-3-sydorov-daniil-task2 version $VERSION"
+ 15   exit 0
+ 16 }
+ 17 
+ 18 convert_encoding() {
+ 19   iconv -f "WINDOWS-1251" -t "UTF-8" "$source_csv" > "$converted_file"
+ 20   sed -i 's/\r/\n/g' "$converted_file"
+ 21 }
+ 22 
+ 23 extract_groups() {
+ 24   awk -F, 'NR>1 {gsub(/^\"|\"$/, "", $1); print $1}' "$INPUT_FILE" | sed -E 's/.*\(([^)]+)\).*/\1/' | cut -d'-' -f2 | sort | uniq > .group_list
+ 25 }
+ 26 
+ 27 select_timetable_file() {
+ 28   local files=( $(ls "$script_dir"/TimeTable_??_??_20??.csv 2>/dev/null) )
+ 29   if [[ ${#files[@]} -eq 0 ]]; then echo "No matching CSV files." >&2; exit 1; fi
+ 30   echo "Select a CSV file:"; select f in "${files[@]}"; do
+ 31     [[ -n "$f" ]] && selected_file="$f" && break || echo "Invalid choice."
+ 32   done
+ 33 }
+ 34 
+ 35 select_group() {
+ 36   echo "Select an academic group:"; select g in $groups; do
+ 37     [[ -n "$g" ]] && selected_group="$g" && break || echo "Invalid choice."
+ 38   done
+ 39 }
+ 40 
+ 41 format_time() {
+ 42   local hour=${1%%:*}; local min=${1##*:};
+ 43   local suffix="AM"; ((hour >= 12)) && suffix="PM"
+ 44   ((hour > 12)) && hour=$((hour - 12)); ((hour == 0)) && hour=12
+ 45   printf "%02d:%s %s" "$hour" "$min" "$suffix"
+ 46 }
+ 47 
+ 48 generate_output_csv() {
+ 49   echo '"Subject","Start Date","Start Time","End Date","End Time","Description"' > "$OUTPUT_FILE"
+ 50   declare -A subject_counter
+ 51 
+ 52   awk -F, -v group="$selected_group" 'BEGIN { OFS="," }
+ 53   NR > 1 {
+ 54     for (i=1; i<=NF; i++) gsub(/^\"|\"$/, "", $i)
+ 55     if ($1 ~ group) {
+ 56       subj = $1
+ 57       gsub(/\*/,"", subj)
+ 58       gsub(/\(.+\)/, "", subj)
+ 59       gsub(/^[[:space:]]+|[[:space:]]+$/, "", subj)
+ 60       count[subj]++
+ 61 
+ 62       desc = $NF
+ 63 
+ 64       split($2, sd, "."); start_date = sd[2] "/" sd[1] "/" sd[3]
+ 65       split($4, ed, "."); end_date = ed[2] "/" ed[1] "/" ed[3]
+ 66 
+ 67       split($3, st, ":"); hour1 = st[1]; min1 = st[2]
+ 68       split($5, et, ":"); hour2 = et[1]; min2 = et[2]
+ 69 
+ 70       suffix1 = (hour1 >= 12) ? "PM" : "AM"
+ 71       suffix2 = (hour2 >= 12) ? "PM" : "AM"
+ 72       hour1 = (hour1 % 12 == 0) ? 12 : hour1 % 12
+ 73       hour2 = (hour2 % 12 == 0) ? 12 : hour2 % 12
+ 74 
+ 75       start_time = hour1 ":" min1 " " suffix1
+ 76       end_time = hour2 ":" min2 " " suffix2
+ 77 
+ 78       printf "\"%s; №%d\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+ 79         subj, count[subj], start_date, start_time, end_date, end_time, desc
+ 80     }
+ 81   }' "$INPUT_FILE" >> "$OUTPUT_FILE"
+ 82 
+ 83   [[ $quiet -eq 0 ]] && cat "$OUTPUT_FILE"
+ 84 }
+ 85 
+ 86 main() {
+ 87   case "$1" in
+ 88     --help) print_help;;
+ 89     --version) print_version;;
+ 90     -q|--quiet) quiet=1; shift;;
+ 91   esac
+ 92 
+ 93   if [[ -n "$2" ]]; then
+ 94     selected_group="$1"; selected_file="$2"
+ 95   elif [[ -n "$1" && -f "$script_dir/$1" ]]; then
+ 96     selected_file="$script_dir/$1"
+ 97   elif [[ -n "$1" ]]; then
+ 98     selected_group="$1"
+ 99   else
+100     select_timetable_file
+101   fi
+102 
+103   [[ -z "$selected_file" ]] && select_timetable_file
+104   [[ ! -f "$selected_file" ]] && echo "Error: file not found!" >&2 && exit 1
+105 
+106   source_csv="$selected_file"
+107   converted_file="/tmp/converted_$(basename "$source_csv")"
+108   convert_encoding
+109   INPUT_FILE="$converted_file"
+110   extract_groups || { echo "No valid groups found" >&2; exit 1; }
+111   groups=$(cat .group_list)
+112 
+113   if [[ -z "$selected_group" ]]; then
+114     if [[ $(wc -l < .group_list) -eq 1 ]]; then
+115       selected_group=$(head -n1 .group_list)
+116     else
+117       select_group
+118     fi
+119   fi
+120 
+121   grep -q "$selected_group" .group_list || { echo "Group '$selected_group' not found!" >&2; exit 1; }
+122 
+123   OUTPUT_FILE="$script_dir/Google_$(basename "$selected_file")"
+124   generate_output_csv
+125 }
+126 
+127 main "$@"
