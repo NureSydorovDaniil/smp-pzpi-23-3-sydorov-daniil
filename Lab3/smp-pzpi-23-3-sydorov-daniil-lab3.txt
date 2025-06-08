@@ -24,3 +24,191 @@
 
 
                                    Харків – 2025
+
+ЗАВДАННЯ
+Результатом лабораторної роботи має бути робочий сайт з інтернетмагазином. Він має складатися з таких розділів: 
+1. Сторінка товарів. 
+2. Сторінка «Кошик». 
+Кожна сторінка має складатися з таких частин: 
+1. «Шапка» сторінки, 
+2. Тіло сторінки. 
+3. «Підвал» або Footer сторінки. 
+На сторінці товарів необхідно відобразити список доступних для покупки найменувань з можливістю вибрати кількість одиниць товарів і кнопкою «купити». 
+Під час натискання на кнопку «купити», має відправлятися запит (відправка форми, методом POST) на сервер, де дані зберігаються в сесію. 
+На сторінці «Кошик» необхідно відобразити список обраних користувачем товарів (які були збережені у сесію). 
+Якщо ви ще не обрали жодного товару, то має бути відображений напис «Перейти до покупок» (посилання).
+
+ХІД РОБОТИ
+Для виконання лабораторної роботи, було розроблено та реалізовано наступні файли: shophome.php(головна сторінка), products.php(сторінка з продукцією), productsbin.php(сторінка кошику з продуктами), add_to_cart.php(додавання до кошика).
+
+Головна сторінка (shophome.php) сторінка з привітанням клієнта, тут не реалізовано певних функцій, ця сторінка працює як привітання, та навігатор, для подальших дій користувача
+
+Сторінка з продукцією (products.php) сторінка з продукцією. Тут на сторінці створюється масив де кожен товар має своє id, імя, ціну та посилання на зображення, яке відображається на сайті
+
+Сторінка з кошиком (productsbin.php) сторінка розробленна для відображення куплених товарів користувачем, у користувача є можливість продивитись інформацію про куплені товари, подивитись на ціну за кожен товар та їх суму, можливість видалити всі товари з кошика.
+
+ВИСНОВКИ
+У результаті виконання лабораторної роботи було створено повноцінний динамічний вебзастосунок з функціональністю інтернет-магазину.
+
+Відеозвіт: https://youtu.be/iTRVBVf7noU
+
+ДОДАТОК А
+1) shophome.php
+1 <?php session_start(); ?>
+2 <!DOCTYPE html>
+3 <html lang="uk">
+4 <head>
+5     <meta charset="UTF-8">
+6     <title>Головна сторінка</title>
+7     <link rel="stylesheet" href="style.css">
+8 </head>
+9 <body>
+10 <header>
+11     <nav>
+12         <a href="shophome.php">Головна</a> |
+13         <a href="products.php">Товари</a> |
+14         <a href="productsbin.php">Кошик</a>
+15     </nav>
+16 </header>
+17 <main>
+18     <h1>Вітаємо у нашому магазині</h1>
+19 </main>
+20 <footer>
+21     <p>&copy; Інтернет магазин 2025</p>
+22 </footer>
+23 </body>
+24 </html>
+
+2) products.php
+<?php session_start(); ?>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Товари</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <nav>
+        <a href="shophome.php">Головна</a> |
+        <a href="products.php">Товари</a> |
+        <a href="productsbin.php">Кошик</a>
+    </nav>
+</header>
+<main>
+    <h1>Товари</h1>
+    <section class="product-list">
+        <?php
+        $products = [
+            ["id" => 1, "name" => "Ігровий Ноутбук Acer", "price" => 40000, "img" => "https://bigmag.ua/image/cache/catalog/new/Wind/Acer%20Nitro%20V%2015%20ANV15-51/1-2000x2000.jpg"],
+            ["id" => 2, "name" => "Смартфон Samsung", "price" => 22000, "img" => "https://i.ebayimg.com/images/g/hkoAAOSwCBxlOYRh/s-l1200.jpg"],
+            ["id" => 3, "name" => "Смарт годинник Apple Watch", "price" => 15000, "img" => "https://g-store.com.ua/image/cache/catalog/productfoto/12533/apple-watch-series-9-45mm-gps-lte-graphite-stainless-steel-with-graphite-milanese-loop-mrmx3-1-1200x1200.jpg"]
+        ];
+
+        foreach ($products as $product) {
+            echo '<div class="product">';
+            echo '<img src="'.$product["img"].'" alt="'.$product["name"].'" class="product-img">';
+            echo '<h2>'.$product["name"].'</h2>';
+            echo '<p>Ціна: '.$product["price"].' грн</p>';
+            echo '<form method="POST" action="add_to_cart.php">';
+            echo '<input type="hidden" name="product_id" value="'.$product["id"].'">';
+            echo '<input type="number" name="quantity" value="1" min="1" required>';
+            echo '<button type="submit">Купити</button>';
+            echo '</form>';
+            echo '</div>';
+        }
+        ?>
+    </section>
+</main>
+<footer>
+    <p>&copy; 2025 Web-магазин</p>
+</footer>
+</body>
+</html>
+
+3) productsbin.php
+<?php session_start(); ?>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Кошик</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <nav>
+        <a href="shophome.php">Головна</a> |
+        <a href="products.php">Товари</a> |
+        <a href="productsbin.php">Кошик</a>
+    </nav>
+</header>
+<main>
+    <h1>Кошик покупок</h1>
+    <?php
+    if (!isset($_SESSION["cart"]) || empty($_SESSION["cart"])) {
+        echo '<p>На данний час вами не було здійснено покупок</p>';
+        echo '<p><a href="products.php">Перейти до покупок</a></p>';
+    } else {
+        echo '<ul>';
+        $total = 0;
+        foreach ($_SESSION["cart"] as $item) {
+            $item_total = $item["price"] * $item["quantity"];
+            $total += $item_total;
+            echo '<li>'.$item["name"].' — '.$item["quantity"].' шт. ('.$item_total.' грн)</li>';
+        }
+        echo '</ul>';
+        echo '<p><strong>Загальна сума: '.$total.' грн</strong></p>';
+        echo '<form method="POST" action="clear_cart.php">';
+        echo '<button type="submit">Очистити кошик</button>';
+        echo '</form>';
+    }
+    ?>
+</main>
+<footer>
+    <p>&copy; 2025 Web-магазин</p>
+</footer>
+</body>
+</html>
+
+4) add_to_cart.php
+<?php
+session_start();
+
+$products = [
+    1 => ["name" => "Ігровий Ноутбук Acer", "price" => 40000],
+    2 => ["name" => "Смартфон Samsung", "price" => 22000],
+    3 => ["name" => "Смарт годинник Apple Watch", "price" => 15000],
+];
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $product_id = (int) $_POST["product_id"];
+    $quantity = (int) $_POST["quantity"];
+
+    if (isset($products[$product_id])) {
+        $product = $products[$product_id];
+
+        if (isset($_SESSION["cart"][$product_id])) {
+            $_SESSION["cart"][$product_id]["quantity"] += $quantity;
+        } else {
+            $_SESSION["cart"][$product_id] = [
+                "id" => $product_id,
+                "name" => $product["name"],
+                "price" => $product["price"],
+                "quantity" => $quantity
+            ];
+        }
+    }
+}
+
+header("Location: productsbin.php");
+exit;
+
+
+5) clear_cart.php
+1 <?php
+2 session_start();
+3 unset($_SESSION["cart"]);
+4 header("Location: productsbin.php");
+5 exit;
