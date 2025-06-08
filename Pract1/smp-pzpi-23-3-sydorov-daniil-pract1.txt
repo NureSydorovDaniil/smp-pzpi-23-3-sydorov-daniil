@@ -59,4 +59,150 @@ for ... in .. do ... done
 for ((...)); do ... done  
 У скрипті також потрібно використати функцію. 
 
-    Хід роботи
+    ХІД РОБОТИ
+
+Весь код для відображення ялинки знаходиться у додатку А. Перший рядок скрипта – це shebang, який вказує системі, як потрібно виконувати скрипт. 
+
+1 #!/bin/bash
+
+Далі йдуть перевірка, скрипт перевіряє чи передано 2 аргументи, записані змінні для висоти та ширини, значення присвоюються як перший та другий аргумент.
+Наступна перевірка чи не є значення аргументу від'ємним. 
+
+3 if (( $# != 2 )); then
+4    echo "потрібно вказати 2 аргументи" >&2
+5    exit 1
+6 fi
+7
+8 HEIGHT=$1
+9 WIDTH=$2
+10
+11 if (( HEIGHT <= 0 || WIDTH <= 0 )); then
+12    echo "не додані оба аргументи" >&2
+13    exit 2
+14 fi
+
+Висота округлюється до парного значення, обчислюється максимальна ширина гілок для ялинки. 
+
+16 HEIGHT=$(( HEIGHT / 2 * 2 ))
+17 MAX_BRANCH_WIDTH=$(( WIDTH - 4 ))
+
+Перевірка заданих значень для висоти та ширини. Мінімум для висоти - 8, для ширини - 3. 
+
+19 if (( HEIGHT < 8 || MAX_BRANCH_WIDTH < 3 )); then
+20    echo "висота або ширина недостатня" >&2
+21    exit 3
+22 fi
+
+Функція print_row малює рядок ялинки, вирівнює його по центру відносно заданої ширини. Обчислюється скільки пробілів треба зробити для того щоб рядок був по центру.
+
+24 print_row() {
+25    local width=$1
+26    local symbol=$2
+27    local padding=$(( (WIDTH - width) / 2 ))
+28    printf "%${padding}s" ""
+29    printf "%${width}s\n" | tr " " "$symbol"
+30 }
+
+Функція print_layer відповідає за побуводу рядків ялинки, поступово рядки ствють ширшими від верху до низу, рядки чергуються
+
+32print_layer() {
+33    local rows=$1
+34    local symbol="*"
+35    local row=1
+36
+37    while (( row <= rows )); do
+38    local width=$(( 1 + ((MAX_BRANCH_WIDTH - 1) * (row - 1) / (rows - 1)) ))
+39        print_row "$width" "$symbol"
+40
+41        if [ "$symbol" == "*" ]; then
+42            symbol="#"
+43        else
+44            symbol="*"
+45        fi
+46        ((row++))
+47    done
+48 }
+
+Обчислення, яке визначає скільки рядків буде у верхній частині ялинки. Наприкінці цикли яківиводять слої ялинки та її стовбур.
+
+50BRANCH_ROWS=$(( (HEIGHT - 4) / 2 + 1 ))
+51
+52 for layer in 1 2; do
+53    print_layer "$BRANCH_ROWS"
+54 done
+55 for (( i = 0; i < 2; i++ )); do
+56    print_row 3 "#"
+57 done
+58 for (( i = 0; i < WIDTH; i++ )); do
+59    printf "*"
+60 done
+61 printf "\n"
+
+  ВИСНОВКИ
+Під час виконання практичної роботи було розроблено Bash-скрипт, який будує зображення ялинки з двома ярусами гілок, стовбуром та шаром снігу. Програма перевіряє коректність введених параметрів, округлює значення в разі необхідності, забезпечує вивід повідомлення про помилку у разі неможливості побудови ялинки з заданими параметрами.
+
+Відеозвіт: https://youtu.be/zHcYjwpYRZs
+
+   ДОДАТОК А
+   Програмний код
+1 #!/bin/bash
+ 2 
+ 3 if (( $# != 2 )); then
+ 4     echo "потрібно вказати 2 аргументи" >&2
+ 5     exit 1
+ 6 fi
+ 7 
+ 8 HEIGHT=$1
+ 9 WIDTH=$2
+10 
+11 if (( HEIGHT <= 0 || WIDTH <= 0 )); then
+12     echo "не додані оба аргументи" >&2
+13     exit 2
+14 fi
+15 
+16 HEIGHT=$(( HEIGHT / 2 * 2 ))
+17 MAX_BRANCH_WIDTH=$(( WIDTH - 4 ))
+18 
+19 if (( HEIGHT < 8 || MAX_BRANCH_WIDTH < 3 )); then
+20     echo "висота або ширина недостатня" >&2
+21     exit 3
+22 fi
+23 
+24 print_row() {
+25     local width=$1
+26     local symbol=$2
+27     local padding=$(( (WIDTH - width) / 2 ))
+28     printf "%${padding}s" ""
+29     printf "%${width}s\n" | tr " " "$symbol"
+30 }
+31 
+32 print_layer() {
+33     local rows=$1
+34     local symbol="*"
+35     local row=1
+36 
+37     while (( row <= rows )); do
+38         local width=$(( 1 + ((MAX_BRANCH_WIDTH - 1) * (row - 1) / (rows - 1)) ))
+39         print_row "$width" "$symbol"
+40 
+41         if [ "$symbol" == "*" ]; then
+42             symbol="#"
+43         else
+44             symbol="*"
+45         fi
+46         ((row++))
+47     done
+48 }
+49 
+50 BRANCH_ROWS=$(( (HEIGHT - 4) / 2 + 1 ))
+51 
+52 for layer in 1 2; do
+53     print_layer "$BRANCH_ROWS"
+54 done
+55 for (( i = 0; i < 2; i++ )); do
+56     print_row 3 "#"
+57 done
+58 for (( i = 0; i < WIDTH; i++ )); do
+59     printf "*"
+60 done
+61 printf "\n"
